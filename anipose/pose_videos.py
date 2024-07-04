@@ -64,7 +64,7 @@ def process_session(config, session_path):
                 deeplabcut.analyze_videos(config_name, batch,
                                           videotype=video_ext, save_as_csv=save_as_csv,
                                           destfolder=outdir, TFGPUinference=True,
-                                          allow_growth=True, use_openvino=False)
+                                          allow_growth=True)
             for video in batch:
                 basename = os.path.basename(video)
                 basename, ext = os.path.splitext(basename)
