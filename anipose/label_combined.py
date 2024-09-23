@@ -13,15 +13,16 @@ import threading
 
 from aniposelib.cameras import CameraGroup
 
-from .common import make_process_fun, get_nframes, \
+from common import make_process_fun, get_nframes, \
     get_video_name, get_cam_name, \
     get_video_params, get_video_params_cap, \
     get_data_length, natural_keys, true_basename, find_calibration_folder
 
-from .triangulate import load_offsets_dict
+from triangulate import load_offsets_dict
 
-from .label_videos import label_frame
+from label_videos import label_frame
 
+#%%
 def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
@@ -136,45 +137,53 @@ def draw_axis_y(img, rect, range_y, label,
 
 def get_plotting_params(caps_2d, cap_3d, ang_names=[]):
 
-    height_angle = 175
-    spacing_angle = 40
+    # height_angle = 175
+    # spacing_angle = 40
     spacing_videos = 20
 
-    n_angles = len(ang_names)
+    # n_angles = len(ang_names)
+    n_2d = len(caps_2d)
+    n_h_2d = int(np.ceil(np.sqrt(n_2d)))
+    n_w_2d = int(np.ceil(n_2d / n_h_2d))
 
     params_2d = [get_video_params_cap(c) for c in caps_2d]
-    height_2d = max([p['height'] for p in params_2d])
-    widths_2d = [round(p['width'] * height_2d/p['height']) for p in params_2d]
+    height_2d = int(max([p['height'] for p in params_2d]))
+    widths_2d = [int(np.ceil(p['width'] * height_2d/p['height'])) for p in params_2d]
+
 
     param_3d = get_video_params_cap(cap_3d)
-    height_3d = param_3d['height']
-    width_3d = param_3d['width']
+    height_3d = int(param_3d['height'])
+    width_3d = int(param_3d['width'])
 
-    start_3d = height_2d + spacing_videos
-    start_angles = start_3d + height_3d + spacing_videos + spacing_angle
+    scale_3d =  max(widths_2d) / width_3d
 
-    width_total = sum(widths_2d)
-    height_total = height_2d + spacing_videos + height_3d + spacing_videos + \
-        height_angle * n_angles + spacing_angle*(n_angles+1)
+    width_3d_scaled = int(width_3d*scale_3d)
+    height_3d_scaled = int(height_3d*scale_3d)
+
+    start_3d = height_2d * n_w_2d + spacing_videos
+    # start_angles = start_3d + height_3d + spacing_videos
+
+    width_total = max(widths_2d) * n_w_2d
+    height_total = height_2d * n_h_2d + spacing_videos + height_3d_scaled
 
     nframes = min([p['nframes'] for p in params_2d])
     nframes = min(nframes, param_3d['nframes'])
 
     fps = param_3d['fps']
 
-    height_font = spacing_angle//2
-    font_face = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = cv2.getFontScaleFromHeight(
-        font_face, height_font)
-    font_scale = int(round(font_scale))
-    font_color = (0, 0, 0)
-    font_thickness = 2
+    # height_font = spacing_angle//2
+    # font_face = cv2.FONT_HERSHEY_SIMPLEX
+    # font_scale = cv2.getFontScaleFromHeight(
+    #     font_face, height_font)
+    # font_scale = int(round(font_scale))
+    # font_color = (0, 0, 0)
+    # font_thickness = 2
 
-    mid_3d = int((width_total - width_3d) / 2)
+    mid_3d = int((width_total - width_3d_scaled) / 2)
 
     d = {
-        'height_angle': height_angle,
-        'spacing_angle': spacing_angle,
+        # 'height_angle': height_angle,
+        # 'spacing_angle': spacing_angle,
         'spacing_videos': spacing_videos,
 
         'height_2d': height_2d,
@@ -183,21 +192,26 @@ def get_plotting_params(caps_2d, cap_3d, ang_names=[]):
         'width_3d': width_3d,
         'mid_3d': mid_3d,
         'height_3d': height_3d,
+        'scale_3d': scale_3d,
+        'width_3d_scaled': width_3d_scaled,
+        'height_3d_scaled': height_3d_scaled,
+        'width_total': width_total,
+        'height_total': height_total,
+        'n_h_2d': n_h_2d,
+        'n_w_2d': n_w_2d,
 
         'nframes': nframes,
         'fps': fps,
 
-        'width_total': width_total,
-        'height_total': height_total,
 
-        'start_3d': start_3d,
-        'start_angles': start_angles,
+        # 'start_3d': start_3d,
+        # 'start_angles': start_angles,
 
-        'height_font': height_font,
-        'font_face': font_face,
-        'font_scale': font_scale,
-        'font_color': font_color,
-        'font_thickness': font_thickness,
+        # 'height_font': height_font,
+        # 'font_face': font_face,
+        # 'font_scale': font_scale,
+        # 'font_color': font_color,
+        # 'font_thickness': font_thickness,
     }
 
     return d
@@ -207,20 +221,20 @@ def get_start_image(pp, ang_names=[]):
     start_img = np.zeros((pp['height_total'], pp['width_total'], 3), dtype='uint8')
     start_img[:] = 255
 
-    for angnum, name in enumerate(ang_names):
-        start_y = pp['start_angles'] + (pp['height_angle'] + pp['spacing_angle'])*angnum
-        rect = (150, pp['width_total']-100, start_y, start_y + pp['height_angle'])
+    # for angnum, name in enumerate(ang_names):
+    #     start_y = pp['start_angles'] + (pp['height_angle'] + pp['spacing_angle'])*angnum
+    #     rect = (150, pp['width_total']-100, start_y, start_y + pp['height_angle'])
 
-        font_size, baseline = cv2.getTextSize(
-            name, pp['font_face'], pp['font_scale'], pp['font_thickness'])
-        fw, fh = font_size
+    #     font_size, baseline = cv2.getTextSize(
+    #         name, pp['font_face'], pp['font_scale'], pp['font_thickness'])
+    #     fw, fh = font_size
 
-        text_xy = (pp['width_total'] // 2 - fw // 2, start_y)
-        cv2.putText(start_img, name, text_xy, pp['font_face'], pp['font_scale'], pp['font_color'],
-                    thickness=2, lineType=cv2.LINE_AA)
+    #     text_xy = (pp['width_total'] // 2 - fw // 2, start_y)
+    #     cv2.putText(start_img, name, text_xy, pp['font_face'], pp['font_scale'], pp['font_color'],
+    #                 thickness=2, lineType=cv2.LINE_AA)
 
-        draw_axis_y(start_img, rect, (0, 180), 'Angle',
-                    num_ticks=3, thickness=4)
+    #     draw_axis_y(start_img, rect, (0, 180), 'Angle',
+    #                 num_ticks=3, thickness=4)
 
     return start_img
 
@@ -234,33 +248,48 @@ def draw_data(start_img, frames_2d, frame_3d, all_angles, pp):
     width_3d = pp['width_3d']
     mid_3d = pp['mid_3d']
 
-    start_angles = pp['start_angles']
-    height_angle = pp['height_angle']
-    spacing_angle = pp['spacing_angle']
+    scale_3d = pp['scale_3d']
 
-    width_total = pp['width_total']
-    height_total = pp['height_total']
+    n_h_2d = pp['n_h_2d']
+    n_w_2d = pp['n_w_2d']
+
+    width_3d_scaled = pp['width_3d_scaled']
+    height_3d_scaled = pp['height_3d_scaled']
+
+    # start_angles = pp['start_angles']
+    # height_angle = pp['height_angle']
+    # spacing_angle = pp['spacing_angle']
+
+    # width_total = pp['width_total']
+    # height_total = pp['height_total']
 
     frames_2d_resized = [cv2.resize(f, (w, height_2d))
                          for f, w in zip(frames_2d, widths_2d)]
+    frame_3d_resized = cv2.resize(frame_3d, (width_3d_scaled, height_3d_scaled))
 
     imout = np.copy(start_img)
-    imout[0:height_2d] = np.hstack(frames_2d_resized)
-    imout[start_3d:(start_3d + height_3d), mid_3d:(mid_3d+width_3d)] = frame_3d
+    heights_2d = height_2d * n_w_2d
+    # imout[0:heights_2d] = np.hstack(frames_2d_resized)
+    frames_2d_resized_large = [np.hstack(frames_2d_resized[i*n_w_2d:(i+1)*n_w_2d]) for i in range(n_h_2d)]
+    frames_2d_resized_large = np.vstack(frames_2d_resized_large)
+    imout[0:heights_2d] = frames_2d_resized_large
+    imout[start_3d:(start_3d + height_3d_scaled), mid_3d:(mid_3d + width_3d_scaled)] = frame_3d_resized
 
-    data_color = (0,0,0)
-    indicator_color = (150,150,150)
+    # data_color = (0,0,0)
+    # indicator_color = (150,150,150)
 
-    for angnum, angles in enumerate(all_angles):
-        start_y = start_angles + (height_angle + spacing_angle)*angnum
-        rect = (150, width_total-100, start_y, start_y + height_angle)
-        left, right, top, bottom = rect
+    # print(all_angles)
 
-        draw_seq(imout, angles, rect,
-                 range_y=(0, 180), color=data_color, thickness=2)
-        x = (left+right)//2
-        cv2.line(imout, (x, top+15), (x, bottom-15),
-                 indicator_color, thickness=2)
+    # for angnum, angles in enumerate(all_angles):
+    #     start_y = start_angles + (height_angle + spacing_angle)*angnum
+    #     rect = (150, width_total-100, start_y, start_y + height_angle)
+    #     left, right, top, bottom = rect
+
+    #     draw_seq(imout, angles, rect,
+    #              range_y=(0, 180), color=data_color, thickness=2)
+    #     x = (left+right)//2
+    #     cv2.line(imout, (x, top+15), (x, bottom-15),
+    #              indicator_color, thickness=2)
 
     return imout
 
@@ -332,36 +361,37 @@ def draw_projected_points(frames_2d, scheme, bodyparts, points):
 def visualize_combined(config, pose_fname, cgroup, offsets_dict,
                        fnames_2d, fname_3d, out_fname):
 
-    should_load_3d = (cgroup is not None) and \
-        (pose_fname is not None) and \
-        (offsets_dict is not None)
+    # should_load_3d = (cgroup is not None) and \
+    #     (pose_fname is not None) and \
+    #     (offsets_dict is not None)
 
-    if should_load_3d:
-        scheme, bodyparts, points_2d_proj = get_projected_points(config, pose_fname, cgroup, offsets_dict)
+    # if should_load_3d:
+    #     scheme, bodyparts, points_2d_proj = get_projected_points(config, pose_fname, cgroup, offsets_dict)
 
     # if angle_fname is not None:
     #     angles = pd.read_csv(angle_fname)
     #     bad_cols = ['fnum']
     #     ang_names = [col for col in angles.columns if col not in bad_cols]
     # else:
+
     ang_names = []
     angles = None
 
     ang_values = dict()
 
-    for name in ang_names:
-        vals = np.array(angles[name])
-        angf = signal.medfilt(vals, kernel_size=5)
-        err = np.abs(angf - vals)
-        err[np.isnan(err)] = 10000
+    # for name in ang_names:
+    #     vals = np.array(angles[name])
+    #     angf = signal.medfilt(vals, kernel_size=5)
+    #     err = np.abs(angf - vals)
+    #     err[np.isnan(err)] = 10000
 
-        vals[err > 10] = np.nan
-        nans, ix = nan_helper(vals)
-        # some data missing, but not too much
-        if np.sum(nans) > 0 and np.sum(~nans) > 5:
-            vals[nans] = np.interp(ix(nans), ix(~nans), vals[~nans])
+    #     vals[err > 10] = np.nan
+    #     nans, ix = nan_helper(vals)
+    #     # some data missing, but not too much
+    #     if np.sum(nans) > 0 and np.sum(~nans) > 5:
+    #         vals[nans] = np.interp(ix(nans), ix(~nans), vals[~nans])
 
-        ang_values[name] = vals
+    #     ang_values[name] = vals
 
     caps_2d = [cv2.VideoCapture(v) for v in fnames_2d]
     cap_3d = cv2.VideoCapture(fname_3d)
@@ -371,13 +401,13 @@ def visualize_combined(config, pose_fname, cgroup, offsets_dict,
     fps = pp['fps']
     start_img = get_start_image(pp, ang_names)
 
-    ang_window_size = 100
-    pad_size = ang_window_size
+    # ang_window_size = 100
+    # pad_size = ang_window_size
 
-    ang_values_padded = dict()
-    for name, angles in ang_values.items():
-        ang_values_padded[name] = np.pad(angles, pad_size,
-                                         mode='constant', constant_values=np.nan)
+    # ang_values_padded = dict()
+    # for name, angles in ang_values.items():
+    #     ang_values_padded[name] = np.pad(angles, pad_size,
+    #                                      mode='constant', constant_values=np.nan)
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     writer = cv2.VideoWriter(out_fname, fourcc, round(fps, ndigits=2),
@@ -389,21 +419,21 @@ def visualize_combined(config, pose_fname, cgroup, offsets_dict,
                               args=(writer, q))
     thread.start()
 
-    for framenum in trange(nframes, ncols=70):
+    for _ in trange(nframes, ncols=70):
         ret, frames_2d, frame_3d = read_frames(caps_2d, cap_3d)
         if not ret:
             break
 
-        if should_load_3d:
-            frames_2d = draw_projected_points(
-                frames_2d, scheme, bodyparts, points_2d_proj[:, :, framenum])
+        # if should_load_3d:
+        #     frames_2d = draw_projected_points(
+        #         frames_2d, scheme, bodyparts, points_2d_proj[:, :, framenum])
 
         all_angles = []
-        for angnum, name in enumerate(ang_names):
-            a = framenum + pad_size - ang_window_size//2
-            b = a + ang_window_size
-            angles = ang_values_padded[name][a:b]
-            all_angles.append(angles)
+        # for angnum, name in enumerate(ang_names):
+        #     a = framenum + pad_size - ang_window_size//2
+        #     b = a + ang_window_size
+        #     angles = ang_values_padded[name][a:b]
+        #     all_angles.append(angles)
 
         imout = draw_data(start_img, frames_2d, frame_3d, all_angles, pp)
         q.put(imout)
@@ -516,3 +546,5 @@ def process_session(config, session_path):
 
 
 label_combined_all = make_process_fun(process_session)
+
+# %%
