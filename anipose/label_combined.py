@@ -13,14 +13,14 @@ import threading
 
 from aniposelib.cameras import CameraGroup
 
-from common import make_process_fun, get_nframes, \
+from .common import make_process_fun, get_nframes, \
     get_video_name, get_cam_name, \
     get_video_params, get_video_params_cap, \
     get_data_length, natural_keys, true_basename, find_calibration_folder
 
-from triangulate import load_offsets_dict
+from .triangulate import load_offsets_dict
 
-from label_videos import label_frame
+from .label_videos import label_frame
 
 #%%
 def nan_helper(y):
