@@ -14,7 +14,11 @@ def rename_dlc_files(folder, base):
     files = glob(os.path.join(folder, base+'*'))
     for fname in files:
         basename = os.path.basename(fname)
+        # compatibility with DLC 3.0
         _, ext = os.path.splitext(basename)
+        if ext != '.h5' and ext != '.csv':
+            _, ext = basename.rsplit('_', 1)
+            ext = '_' + ext
         os.rename(os.path.join(folder, basename),
                   os.path.join(folder, base + ext))
 
