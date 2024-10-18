@@ -11,6 +11,7 @@ DEFAULT_CONFIG = {
     'video_extension': 'avi',
     'converted_video_speed': 1,
     'save_as_csv': False,
+    'shuffle': 1,
     'calibration': {
         'animal_calibration': False,
         'calibration_init': None,
