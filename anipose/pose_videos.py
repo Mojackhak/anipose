@@ -56,6 +56,8 @@ def process_session(config, session_path):
                 continue
             else:
                 videos_to_process.append(video)
+                
+    print(f"Analyzing videos with DeepLabCut: {config_name} shuffle={shuffle} save_as_csv={save_as_csv}")
 
     if len(videos_to_process) > 0:
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
