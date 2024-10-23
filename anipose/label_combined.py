@@ -22,7 +22,7 @@ from .triangulate import load_offsets_dict
 
 from .label_videos import label_frame
 
-#%%
+
 def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
@@ -160,11 +160,12 @@ def get_plotting_params(caps_2d, cap_3d, ang_names=[]):
     width_3d_scaled = int(width_3d*scale_3d)
     height_3d_scaled = int(height_3d*scale_3d)
 
-    start_3d = height_2d * n_w_2d + spacing_videos
     # start_angles = start_3d + height_3d + spacing_videos
 
-    width_total = max(widths_2d) * n_w_2d
-    height_total = height_2d * n_h_2d + spacing_videos + height_3d_scaled
+    width_total = (max(widths_2d) + spacing_videos) * n_w_2d - spacing_videos
+    height_total = (height_2d + spacing_videos) * n_h_2d + height_3d_scaled
+
+    start_3d = height_total - height_3d_scaled
 
     nframes = min([p['nframes'] for p in params_2d])
     nframes = min(nframes, param_3d['nframes'])
@@ -256,6 +257,8 @@ def draw_data(start_img, frames_2d, frame_3d, all_angles, pp):
     width_3d_scaled = pp['width_3d_scaled']
     height_3d_scaled = pp['height_3d_scaled']
 
+    spacing_videos = pp['spacing_videos']
+
     # start_angles = pp['start_angles']
     # height_angle = pp['height_angle']
     # spacing_angle = pp['spacing_angle']
@@ -268,11 +271,16 @@ def draw_data(start_img, frames_2d, frame_3d, all_angles, pp):
     frame_3d_resized = cv2.resize(frame_3d, (width_3d_scaled, height_3d_scaled))
 
     imout = np.copy(start_img)
-    heights_2d = height_2d * n_w_2d
-    # imout[0:heights_2d] = np.hstack(frames_2d_resized)
-    frames_2d_resized_large = [np.hstack(frames_2d_resized[i*n_w_2d:(i+1)*n_w_2d]) for i in range(n_h_2d)]
-    frames_2d_resized_large = np.vstack(frames_2d_resized_large)
-    imout[0:heights_2d] = frames_2d_resized_large
+    # heights_2d = height_2d * n_w_2d
+    # # imout[0:heights_2d] = np.hstack(frames_2d_resized)
+    # frames_2d_resized_large = [np.hstack(frames_2d_resized[i*n_w_2d:(i+1)*n_w_2d]) for i in range(n_h_2d)]
+    # frames_2d_resized_large = np.vstack(frames_2d_resized_large)
+    # imout[0:heights_2d] = frames_2d_resized_large
+    for i, frame in enumerate(frames_2d_resized):
+        x = (i % n_w_2d) * (frame.shape[1] + spacing_videos)
+        y = (i // n_w_2d) * (frame.shape[0] + spacing_videos)
+        imout[y:(y+frame.shape[0]), x:(x+frame.shape[1])] = frame
+
     imout[start_3d:(start_3d + height_3d_scaled), mid_3d:(mid_3d + width_3d_scaled)] = frame_3d_resized
 
     # data_color = (0,0,0)
@@ -453,14 +461,15 @@ def process_session(config, session_path):
         pipeline_videos_labeled_2d = config['pipeline']['videos_labeled_2d_filter']
     else:
         pipeline_videos_labeled_2d = config['pipeline']['videos_labeled_2d']
-    pipeline_videos_labeled_3d = config['pipeline']['videos_labeled_3d']
     pipeline_videos_raw = config['pipeline']['videos_raw']
     # pipeline_angles = config['pipeline']['angles']
 
     if config['filter3d']['enabled']:
         pipeline_pose_3d = config['pipeline']['pose_3d_filter']
+        pipeline_videos_labeled_3d = config['pipeline']['videos_labeled_3d_filter']
     else:
         pipeline_pose_3d = config['pipeline']['pose_3d']
+        pipeline_videos_labeled_3d = config['pipeline']['videos_labeled_3d']
     pipeline_videos_combined = config['pipeline']['videos_combined']
 
     video_ext = config['video_extension']
@@ -546,5 +555,3 @@ def process_session(config, session_path):
 
 
 label_combined_all = make_process_fun(process_session)
-
-# %%
