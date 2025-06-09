@@ -48,8 +48,8 @@ def filter_pose(config, fname, outname):
         for v in 'xyz':
             key = '{}_{}'.format(bp, v)
             values = np.array(data[key])
-            if np.any(bad):
-                values[bad] = np.nan
+            values = values.astype(np.float64)
+            values[bad] = np.nan
             values_intp = interpolate_data(values)
             values_filt = medfilt_data(values_intp, size)
             data[key] = values_filt
